@@ -37,19 +37,22 @@ const result = spawnSync(code, [
   `--extensions-dir=${path.join(temp, 'extensions')}`,
   '--disable-workspace-trust',
   '--skip-welcome',
-  '--new-window'
+  '--new-window',
+  // CI runners (Ubuntu 24.04) block the namespaces the Chromium sandbox needs, and have no GPU.
+  ...(process.platform === 'linux' ? ['--no-sandbox', '--disable-gpu'] : [])
 ], { stdio: 'inherit', env: withoutRunAsNode(process.env) });
 
 const report = path.join(workspace, 'integration-results.txt');
-if (fs.existsSync(report)) console.log(fs.readFileSync(report, 'utf8'));
-else console.error('No results: VS Code did not run the tests.');
+const ran = fs.existsSync(report);
+if (ran) console.log(fs.readFileSync(report, 'utf8'));
+else console.error(`No results: VS Code did not run the tests${result.error ? ` (${result.error.message})` : ''}.`);
 
 try {
   fs.rmSync(temp, { recursive: true, force: true, maxRetries: 5, retryDelay: 500 });
 } catch {
   // VS Code may still hold a file for a moment; the folder is in the temp directory anyway.
 }
-process.exit(result.status ?? 1);
+process.exit(ran ? result.status ?? 1 : 1);
 
 /** Started from a VS Code terminal, ELECTRON_RUN_AS_NODE would make VS Code start as plain Node. */
 function withoutRunAsNode(env) {

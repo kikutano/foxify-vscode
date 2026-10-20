@@ -24,6 +24,51 @@ jobs:
           node-version: '22'
       - run: npm test
 
+  # The extension in a real VS Code, with the latest foxify release, against the Foxify test
+  # server of the same version (its examples are the test workspace).
+  integration:
+    name: Integration tests
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install foxify
+        run: curl -fsSL https://raw.githubusercontent.com/kikutano/foxify/main/install.sh | sh
+
+      - name: Get the foxify sources of the installed version
+        run: git clone --depth 1 --branch "v$("$HOME/.local/bin/foxify" --version)" https://github.com/kikutano/foxify foxify-src
+
+      - name: Start the Foxify test server
+        run: |
+          dotnet run --project foxify-src/tests/Foxify.RealServer.Tests --urls http://localhost:5122 > server.log 2>&1 &
+          for i in $(seq 1 120); do
+            curl -sf -o /dev/null http://localhost:5122/api/public && exit 0
+            sleep 1
+          done
+          echo "Test server did not start"; cat server.log; exit 1
+
+      - name: Install VS Code
+        run: |
+          curl -fsSL -o vscode.tar.gz https://update.code.visualstudio.com/latest/linux-x64/stable
+          mkdir vscode && tar -xzf vscode.tar.gz -C vscode --strip-components=1
+
+      - name: Integration tests
+        run: FOXIFY_PATH="$HOME/.local/bin/foxify" xvfb-run -a node test/integration/run.js
+        env:
+          FOXIFY_EXAMPLES: foxify-src/docs
+          VSCODE_PATH: vscode/code
+
+      - name: Test server log
+        if: failure()
+        run: cat server.log || true
+
   package:
     name: Package the extension
     runs-on: ubuntu-latest
