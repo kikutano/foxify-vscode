@@ -1,0 +1,117 @@
+{
+  "name": "foxify-vscode",
+  "displayName": "Foxify",
+  "description": "Explore endpoints and run Foxify API workflows from VS Code: validation as you save, one-click calls, results in the Test Explorer.",
+  "version": "0.1.0",
+  "publisher": "kikutano",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kikutano/foxify-vscode"
+  },
+  "bugs": {
+    "url": "https://github.com/kikutano/foxify-vscode/issues"
+  },
+  "homepage": "https://github.com/kikutano/foxify-vscode#readme",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Testing",
+    "Other"
+  ],
+  "keywords": [
+    "api",
+    "api testing",
+    "http",
+    "rest",
+    "yaml",
+    "foxify"
+  ],
+  "main": "./src/extension.js",
+  "activationEvents": [
+    "onLanguage:yaml",
+    "workspaceContains:**/*.yaml",
+    "workspaceContains:**/*.yml"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "foxify.runWorkflow",
+        "title": "Run Workflow",
+        "category": "Foxify",
+        "icon": "$(play)"
+      },
+      {
+        "command": "foxify.callEndpoint",
+        "title": "Call Endpoint",
+        "category": "Foxify"
+      },
+      {
+        "command": "foxify.selectEnvironment",
+        "title": "Select Environment",
+        "category": "Foxify"
+      },
+      {
+        "command": "foxify.showRun",
+        "title": "Show Last Run",
+        "category": "Foxify"
+      },
+      {
+        "command": "foxify.validate",
+        "title": "Validate File",
+        "category": "Foxify"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "foxify.runWorkflow",
+          "when": "editorLangId == yaml"
+        },
+        {
+          "command": "foxify.callEndpoint",
+          "when": "editorLangId == yaml"
+        },
+        {
+          "command": "foxify.validate",
+          "when": "editorLangId == yaml"
+        }
+      ],
+      "editor/title/run": [
+        {
+          "command": "foxify.runWorkflow",
+          "when": "resourceLangId == yaml && foxify.isWorkflow",
+          "group": "navigation"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Foxify",
+      "properties": {
+        "foxify.path": {
+          "type": "string",
+          "default": "foxify",
+          "markdownDescription": "Path of the `foxify` binary. The default finds it on the `PATH`. Install it with the [one-line installer](https://github.com/kikutano/foxify#install)."
+        },
+        "foxify.validateOnSave": {
+          "type": "boolean",
+          "default": true,
+          "description": "Validate Foxify files when they are opened and saved, and show the problems in the editor."
+        },
+        "foxify.variables": {
+          "type": "object",
+          "default": {},
+          "additionalProperties": {
+            "type": "string"
+          },
+          "markdownDescription": "Variables passed with `--var` to every run and call, over the environment file. Values are typed like YAML: `42` is a number, `\"42\"` a string."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "test": "node --test \"test/**/*.test.js\"",
+    "package": "npx --yes @vscode/vsce package"
+  }
+}
