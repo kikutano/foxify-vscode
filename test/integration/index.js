@@ -121,6 +121,25 @@ async function run() {
     assert.match(invalid.errors[0].message, /missing required param 'lastName'/);
   });
 
+  await check('without a chosen environment, a run first asks for one; dismissing it cancels the run', async () => {
+    const state = foxify.foxify.context.workspaceState;
+    const chosen = state.get('foxify.environment');
+    await state.update('foxify.environment', undefined);
+    try {
+      assert.equal(foxify.foxify.hasChosenEnvironment(), false);
+      const asked = foxify.foxify.ensureEnvironment();
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      await vscode.commands.executeCommand('workbench.action.closeQuickOpen');
+      assert.equal(await asked, false);
+
+      await state.update('foxify.environment', '');
+      assert.equal(foxify.foxify.hasChosenEnvironment(), true, '"No environment" is a choice');
+      assert.equal(await foxify.foxify.ensureEnvironment(), true);
+    } finally {
+      await state.update('foxify.environment', chosen);
+    }
+  });
+
   const report = results.join('\n');
   fs.writeFileSync(path.join(root, 'integration-results.txt'), report);
   if (results.some(r => r.startsWith('FAIL'))) throw new Error(`Integration tests failed:\n${report}`);

@@ -35,6 +35,7 @@ class EndpointCaller {
       ? json.endpoints.find(e => e.name === name)
       : await this.pickEndpoint(json.endpoints);
     if (!endpoint) return;
+    if (!(await this.foxify.ensureEnvironment())) return;
 
     const args = await this.askArguments(uri, endpoint);
     if (!args) return;
@@ -106,8 +107,10 @@ class EndpointCaller {
     this.runView.begin(endpoint, { reveal: true, environment: options.environment });
 
     let invalid;
+    const events = [];
     const execution = cli.stream(this.foxify.command(), argv, cwd, event => {
       if (event.event === 'invalid') invalid = event;
+      events.push(event);
       this.runView.event(event);
     }, chunk => this.foxify.output.append(chunk));
 
@@ -119,6 +122,8 @@ class EndpointCaller {
         vscode.window.showErrorMessage(`Foxify: ${invalid.errors.map(e => e.message).join('; ')}`);
       } else if (result.code === 2 && result.stderr.trim()) {
         this.runView.error(result.stderr.trim());
+      } else {
+        this.foxify.explainUndefinedVariables(events);
       }
     } catch (error) {
       this.foxify.reportError(error);

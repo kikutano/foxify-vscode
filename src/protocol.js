@@ -129,6 +129,12 @@ function failureLines(step) {
   return lines;
 }
 
+/** The name of the variable a step failed on ("Variable 'x' is not defined."), or undefined. */
+function undefinedVariable(event) {
+  if (event?.event !== 'step_completed' || event.success || !event.failure) return undefined;
+  return /^Variable '([^']+)' is not defined/.exec(event.failure)?.[1];
+}
+
 /** Compares `0.9.0`, `0.10.1`, `1.0.0-beta.1` by their numbers; a pre-release counts as its version. */
 function compareVersions(a, b) {
   const parse = version => String(version).split('-')[0].split('.').map(n => Number.parseInt(n, 10) || 0);
@@ -177,6 +183,7 @@ module.exports = {
   toPosition,
   problemsByFile,
   failureLines,
+  undefinedVariable,
   compareVersions,
   isSupportedVersion,
   endpointInputs

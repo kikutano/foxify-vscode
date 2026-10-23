@@ -91,6 +91,16 @@ test('failureLines lists the failure and the failed checks', () => {
   assert.deepEqual(protocol.failureLines({ success: false, failure: null, assertions: [] }), ['The step failed']);
 });
 
+test('undefinedVariable finds the variable a step failed on', () => {
+  const failed = failure => ({ event: 'step_completed', success: false, failure, assertions: [] });
+
+  assert.equal(protocol.undefinedVariable(failed("Variable 'passengerEmail' is not defined.")), 'passengerEmail');
+  assert.equal(protocol.undefinedVariable(failed('Expected status 200, got 401')), undefined);
+  assert.equal(protocol.undefinedVariable(failed(null)), undefined);
+  assert.equal(protocol.undefinedVariable({ event: 'step_completed', success: true, failure: null }), undefined);
+  assert.equal(protocol.undefinedVariable({ event: 'run_finished', success: false }), undefined);
+});
+
 test('Versions are compared by their numbers', () => {
   assert.equal(protocol.compareVersions('0.10.0', '0.9.0'), 1);
   assert.equal(protocol.compareVersions('0.9.0', '0.9.0'), 0);

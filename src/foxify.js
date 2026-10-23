@@ -98,10 +98,17 @@ class Foxify {
 
   // --- Environment -----------------------------------------------------------
 
+  // The choice is stored per workspace: a file path, or '' for "no environment", chosen on purpose.
+  // Nothing stored (a new folder) or a file that no longer exists means "not chosen yet".
+
   /** The selected environment file, if it still exists. */
   environment() {
     const file = this.context.workspaceState.get(ENVIRONMENT_KEY);
     return file && fs.existsSync(file) ? file : undefined;
+  }
+
+  hasChosenEnvironment() {
+    return this.context.workspaceState.get(ENVIRONMENT_KEY) === '' || this.environment() !== undefined;
   }
 
   updateStatus() {
@@ -112,29 +119,66 @@ class Foxify {
       : 'Foxify: select the environment file passed with -e';
   }
 
-  async selectEnvironment() {
-    const files = (await vscode.workspace.findFiles('**/*.{yaml,yml}', IGNORED_FOLDERS))
+  async environmentFiles() {
+    return (await vscode.workspace.findFiles('**/*.{yaml,yml}', IGNORED_FOLDERS))
       .filter(uri => protocol.isEnvironmentFileName(uri.fsPath))
       .sort((a, b) => a.fsPath.localeCompare(b.fsPath));
+  }
+
+  /** Asks for the environment file; resolves to false when the user dismisses the list. */
+  async selectEnvironment({ reason } = {}) {
+    const files = await this.environmentFiles();
     const current = this.environment();
 
     const items = [
-      { label: 'No environment', description: 'run without -e', file: undefined },
       ...files.map(uri => ({
         label: path.basename(uri.fsPath),
-        description: vscode.workspace.asRelativePath(path.dirname(uri.fsPath)),
+        description: [vscode.workspace.asRelativePath(path.dirname(uri.fsPath)), uri.fsPath === current ? '(current)' : '']
+          .filter(Boolean).join(' '),
         file: uri.fsPath
-      }))
-    ].map(item => ({ ...item, picked: item.file === current }));
+      })),
+      { label: 'No environment', description: 'run without -e', file: '' }
+    ];
 
     const picked = await vscode.window.showQuickPick(items, {
-      title: 'Foxify environment',
-      placeHolder: files.length === 0 ? 'No env*.yaml file found in the workspace' : 'The file passed with -e to every run and call'
+      title: reason ?? 'Foxify environment',
+      placeHolder: files.length === 0 ? 'No env*.yaml file found in the workspace' : 'The file passed with -e to every run and call',
+      ignoreFocusOut: !!reason
     });
-    if (!picked) return;
+    if (!picked) return false;
 
     await this.context.workspaceState.update(ENVIRONMENT_KEY, picked.file);
     this.updateStatus();
+    return true;
+  }
+
+  /**
+   * Before a run or a call: when no environment was chosen for this workspace and it has
+   * environment files, asks which one to use. Resolves to false when the user dismisses it,
+   * and the run does not start.
+   */
+  async ensureEnvironment() {
+    if (this.hasChosenEnvironment()) return true;
+    if ((await this.environmentFiles()).length === 0) return true;
+    return this.selectEnvironment({ reason: 'Foxify: which environment should this run use?' });
+  }
+
+  /**
+   * After a run or a call: a step that failed on an undefined variable usually means a
+   * missing or wrong environment file. Says so, with a way to pick another one.
+   */
+  async explainUndefinedVariables(events) {
+    const names = [...new Set(events.map(protocol.undefinedVariable).filter(Boolean))];
+    if (names.length === 0) return;
+
+    const file = this.environment();
+    const variables = names.map(n => `'${n}'`).join(', ');
+    const message = file
+      ? `Foxify: ${variables} ${names.length === 1 ? 'is' : 'are'} not defined. Add ${names.length === 1 ? 'it' : 'them'} to ${path.basename(file)}, to the workflow's variables or to foxify.variables, or pick another environment.`
+      : `Foxify: ${variables} ${names.length === 1 ? 'is' : 'are'} not defined, and no environment file is selected.`;
+
+    const choice = await vscode.window.showWarningMessage(message, 'Select environment');
+    if (choice === 'Select environment') await this.selectEnvironment();
   }
 }
 

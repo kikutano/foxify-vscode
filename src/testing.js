@@ -127,15 +127,20 @@ class WorkflowTests {
   }
 
   async run(request, token, { reveal = false } = {}) {
+    if (!(await this.foxify.ensureEnvironment())) return;
+
     const run = this.controller.createTestRun(request);
+    const events = [];
     try {
       for (const workflow of this.workflowsOf(request)) {
         if (token.isCancellationRequested) break;
-        await this.runWorkflow(workflow, run, token, reveal);
+        events.push(...await this.runWorkflow(workflow, run, token, reveal));
       }
     } finally {
       run.end();
     }
+    // Not awaited: the message stays up while the run is already over.
+    this.foxify.explainUndefinedVariables(events);
   }
 
   async runWorkflow(item, run, token, reveal) {
@@ -155,9 +160,11 @@ class WorkflowTests {
     this.runView.begin(item.label, { reveal, environment: options.environment });
 
     const completed = new Set();
+    const events = [];
     let finished;
     let invalid;
     const execution = cli.stream(this.foxify.command(), args, cwd, event => {
+      events.push(event);
       this.runView.event(event);
       const child = steps.get(event.index);
       switch (event.event) {
@@ -193,7 +200,7 @@ class WorkflowTests {
       this.foxify.reportError(error);
       this.runView.error(error.message);
       run.errored(item, new vscode.TestMessage(error.message));
-      return;
+      return events;
     } finally {
       cancelled.dispose();
     }
@@ -223,6 +230,7 @@ class WorkflowTests {
       this.runView.error(message);
       run.errored(item, new vscode.TestMessage(message));
     }
+    return events;
   }
 }
 
