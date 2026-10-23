@@ -2,6 +2,10 @@
 
 Explore endpoints and run [Foxify](https://github.com/kikutano/foxify) API workflows without leaving the editor.
 
+<p align="center">
+  <img src="media/screen.png" alt="A Foxify workflow open in VS Code: a Run workflow link above it, a green check next to each step, and the run view with the steps, the checks of the selected step and its response">
+</p>
+
 - **Problems as you save.** Foxify files are validated when you open and save them: an unknown endpoint, a missing param or a misspelled key is underlined where it is, with the suggestion of Foxify (`did you mean 'get_user'?`).
 - **Call an endpoint.** A **▶ Call** link sits above every endpoint of an API file. It asks for the required params, lets you pick optional ones, and shows the response, whatever its status. The last values are remembered for each endpoint.
 - **Run workflows.** **▶ Run workflow** at the top of a workflow, or the **Test Explorer**: each workflow is a test suite and each step a test, updated live as the run goes. A failed step shows why, at its line.
