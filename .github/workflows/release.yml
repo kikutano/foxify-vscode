@@ -1,0 +1,51 @@
+name: Release
+
+# Push a SemVer tag that matches the version in package.json to publish a release, e.g.:
+#   git tag -a v0.1.0 --cleanup=whitespace -F notes.md
+#   git push origin v0.1.0
+# The tag message after its first line is used as the top of the release notes.
+# The .vsix is attached as foxify-vscode.vsix, so this link always gets the latest one:
+#   https://github.com/kikutano/foxify-vscode/releases/latest/download/foxify-vscode.vsix
+on:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Publish GitHub Release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: The tag matches package.json
+        run: |
+          version=$(node -p "require('./package.json').version")
+          if [ "v$version" != "${GITHUB_REF_NAME%%-*}" ] && [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match package.json version $version"; exit 1
+          fi
+
+      - run: npm test
+
+      - name: Package
+        run: npm run package -- --out foxify-vscode.vsix
+
+      # The body of an annotated tag (everything after its first line) goes on top of the
+      # generated notes. A lightweight tag, or one with a single line, adds nothing.
+      - name: Release notes from the tag message
+        run: |
+          git fetch --force --depth 1 origin "refs/tags/${GITHUB_REF_NAME}:refs/tags/${GITHUB_REF_NAME}"
+          git tag -l --format='%(contents:body)' "${GITHUB_REF_NAME}" > "${RUNNER_TEMP}/tag-notes.md"
+          cat "${RUNNER_TEMP}/tag-notes.md"
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: foxify-vscode.vsix
+          body_path: ${{ runner.temp }}/tag-notes.md
+          generate_release_notes: true
+          prerelease: ${{ contains(github.ref_name, '-') }}

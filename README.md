@@ -10,6 +10,19 @@ Explore endpoints and run [Foxify](https://github.com/kikutano/foxify) API workf
 
 The extension has no runtime dependency and no engine of its own: it runs the `foxify` binary, and reads its [JSON protocol](https://github.com/kikutano/foxify/blob/main/docs/protocol.md). What you see in VS Code is what `foxify run` does in CI.
 
+## Install
+
+Download `foxify-vscode.vsix` from the [latest release](https://github.com/kikutano/foxify-vscode/releases/latest) and install it:
+
+```bash
+curl -fsSLO https://github.com/kikutano/foxify-vscode/releases/latest/download/foxify-vscode.vsix
+code --install-extension foxify-vscode.vsix
+```
+
+Or in VS Code: **Extensions** → **⋯** → **Install from VSIX...**. To update, install the new `.vsix` the same way.
+
+To try it right away, open the [example](https://github.com/kikutano/foxify/tree/main/example) folder of the Foxify repository: it calls a public test API, so there is nothing else to install.
+
 ## Requirements
 
 [Foxify](https://github.com/kikutano/foxify#install) 0.9.0 or newer, on the `PATH` or set with `foxify.path`:
@@ -63,6 +76,7 @@ No dependency to install: the extension is plain JavaScript on the VS Code API.
   ```
 
 - **Package**: `npm run package` builds a `.vsix` with [vsce](https://github.com/microsoft/vscode-vsce), which you can install with **Extensions: Install from VSIX...**.
+- **Release**: set the version in `package.json` and `CHANGELOG.md`, then push a matching annotated tag (`git tag -a v0.2.0 --cleanup=whitespace -F notes.md`). The [Release workflow](.github/workflows/release.yml) tests, packages and publishes a GitHub Release with `foxify-vscode.vsix`; the tag message after its first line goes on top of the notes.
 
 `src/protocol.js` and `src/cli.js` use no VS Code API, and `media/run-view.js` renders the NDJSON events in any browser: they are meant to be reused by other front ends.
 
